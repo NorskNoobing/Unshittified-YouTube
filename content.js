@@ -1,7 +1,7 @@
 (function () {
   const SETTINGS_CONFIG = {
     hideMostRelevantSection: {
-      defaultValue: true,
+      defaultValue: false,
       hiddenAttr: "data-ytx-hidden-most-relevant",
       prevDisplayAttr: "data-ytx-prev-display-most-relevant",
       getTargetSections: getMostRelevantSections,

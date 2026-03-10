@@ -5,7 +5,7 @@
     { key: "hideExploreSection", defaultValue: false },
     { key: "hideMoreFromYoutubeSection", defaultValue: false },
     { key: "hideSubscriptionChannels", defaultValue: false },
-    { key: "hideMostRelevantSection", defaultValue: true },
+    { key: "hideMostRelevantSection", defaultValue: false },
     { key: "hideShortsSection", defaultValue: false }
   ];
   const DEFAULT_SETTINGS = Object.fromEntries(
