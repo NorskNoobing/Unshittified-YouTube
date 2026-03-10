@@ -41,6 +41,13 @@
       prevDisplayAttr: "data-ytx-prev-display-more-from-youtube-sidebar",
       getTargetSections: getMoreFromYoutubeSidebarSections,
       shouldApply: () => true
+    },
+    hideSubscriptionChannels: {
+      defaultValue: false,
+      hiddenAttr: "data-ytx-hidden-subscription-channels",
+      prevDisplayAttr: "data-ytx-prev-display-subscription-channels",
+      getTargetSections: getSubscriptionsChannelElements,
+      shouldApply: () => true
     }
   };
 
@@ -184,6 +191,37 @@
 
   function getMoreFromYoutubeSidebarSections() {
     return getGuideSectionsByTitles(["More from YouTube"]);
+  }
+
+  function getSubscriptionsChannelElements() {
+    const elementsToHide = [];
+    const sections = document.querySelectorAll("ytd-guide-section-renderer");
+
+    for (const section of sections) {
+      const itemsContainer = section.querySelector("#items");
+      if (!itemsContainer) {
+        continue;
+      }
+
+      const subscriptionsEntry = itemsContainer.querySelector(":scope > ytd-guide-collapsible-section-entry-renderer");
+      if (!subscriptionsEntry) {
+        continue;
+      }
+
+      const headerEndpoint = subscriptionsEntry.querySelector('#header #endpoint[href="/feed/subscriptions"]');
+      if (!headerEndpoint) {
+        continue;
+      }
+
+      const sectionChildren = itemsContainer.querySelectorAll(":scope > *");
+      for (const child of sectionChildren) {
+        if (child !== subscriptionsEntry) {
+          elementsToHide.push(child);
+        }
+      }
+    }
+
+    return elementsToHide;
   }
 
   function hideElementForFeature(element, config) {
