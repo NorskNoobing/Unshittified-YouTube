@@ -15,6 +15,7 @@
         "https://www.youtube.com/*"
       ],
       "js": [
+        "settings-schema.js",
         "content.js"
       ],
       "run_at": "document_idle"

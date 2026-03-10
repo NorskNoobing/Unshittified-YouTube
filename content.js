@@ -1,59 +1,54 @@
 (function () {
+  const DEFAULT_SETTINGS = globalThis.YTX_DEFAULT_SETTINGS;
+  if (!DEFAULT_SETTINGS) {
+    console.warn("Unshittified YouTube: settings schema is missing in content context.");
+    return;
+  }
+
   const SETTINGS_CONFIG = {
     hideMostRelevantSection: {
-      defaultValue: false,
       hiddenAttr: "data-ytx-hidden-most-relevant",
       prevDisplayAttr: "data-ytx-prev-display-most-relevant",
       getTargetSections: getMostRelevantSections,
       shouldApply: isSubscriptionsPage
     },
     hideShortsSection: {
-      defaultValue: false,
       hiddenAttr: "data-ytx-hidden-shorts",
       prevDisplayAttr: "data-ytx-prev-display-shorts",
       getTargetSections: getShortsSections,
       shouldApply: isSubscriptionsPage
     },
     hideCountryCode: {
-      defaultValue: false,
       hiddenAttr: "data-ytx-hidden-country-code",
       prevDisplayAttr: "data-ytx-prev-display-country-code",
       getTargetSections: getCountryCodeElements,
       shouldApply: () => true
     },
     hideVoiceSearchButton: {
-      defaultValue: false,
       hiddenAttr: "data-ytx-hidden-voice-search",
       prevDisplayAttr: "data-ytx-prev-display-voice-search",
       getTargetSections: getVoiceSearchElements,
       shouldApply: () => true
     },
     hideExploreSection: {
-      defaultValue: false,
       hiddenAttr: "data-ytx-hidden-explore-sidebar",
       prevDisplayAttr: "data-ytx-prev-display-explore-sidebar",
       getTargetSections: getExploreSidebarSections,
       shouldApply: () => true
     },
     hideMoreFromYoutubeSection: {
-      defaultValue: false,
       hiddenAttr: "data-ytx-hidden-more-from-youtube-sidebar",
       prevDisplayAttr: "data-ytx-prev-display-more-from-youtube-sidebar",
       getTargetSections: getMoreFromYoutubeSidebarSections,
       shouldApply: () => true
     },
     hideSubscriptionChannels: {
-      defaultValue: false,
       hiddenAttr: "data-ytx-hidden-subscription-channels",
       prevDisplayAttr: "data-ytx-prev-display-subscription-channels",
       getTargetSections: getSubscriptionsChannelElements,
       shouldApply: () => true
     }
   };
-
-  const DEFAULT_SETTINGS = Object.fromEntries(
-    Object.entries(SETTINGS_CONFIG).map(([key, config]) => [key, config.defaultValue])
-  );
 
   const api = globalThis.browser?.storage ? globalThis.browser : globalThis.chrome;
   const storageArea = api?.storage?.local;
@@ -306,9 +301,9 @@
   async function loadSettings() {
     const settings = await getSettings(DEFAULT_SETTINGS);
 
-    for (const [key, config] of Object.entries(SETTINGS_CONFIG)) {
+    for (const [key] of Object.entries(SETTINGS_CONFIG)) {
       const value = settings[key];
-      currentSettings[key] = value === undefined ? config.defaultValue : Boolean(value);
+      currentSettings[key] = value === undefined ? Boolean(DEFAULT_SETTINGS[key]) : Boolean(value);
     }
 
     scheduleApply();
@@ -321,13 +316,13 @@
 
     api.storage.onChanged.addListener((changes) => {
       let hasRelevantChange = false;
-      for (const [key, config] of Object.entries(SETTINGS_CONFIG)) {
+      for (const [key] of Object.entries(SETTINGS_CONFIG)) {
         if (!changes[key]) {
           continue;
         }
 
         const nextValue = changes[key].newValue;
-        currentSettings[key] = nextValue === undefined ? config.defaultValue : Boolean(nextValue);
+        currentSettings[key] = nextValue === undefined ? Boolean(DEFAULT_SETTINGS[key]) : Boolean(nextValue);
         hasRelevantChange = true;
       }
 

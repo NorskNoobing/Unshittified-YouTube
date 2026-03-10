@@ -1,16 +1,12 @@
 (function () {
-  const SETTINGS = [
-    { key: "hideCountryCode", defaultValue: false },
-    { key: "hideVoiceSearchButton", defaultValue: false },
-    { key: "hideExploreSection", defaultValue: false },
-    { key: "hideMoreFromYoutubeSection", defaultValue: false },
-    { key: "hideSubscriptionChannels", defaultValue: false },
-    { key: "hideMostRelevantSection", defaultValue: false },
-    { key: "hideShortsSection", defaultValue: false }
-  ];
-  const DEFAULT_SETTINGS = Object.fromEntries(
-    SETTINGS.map((setting) => [setting.key, setting.defaultValue])
-  );
+  const SETTINGS = globalThis.YTX_SETTINGS;
+  const DEFAULT_SETTINGS = globalThis.YTX_DEFAULT_SETTINGS;
+
+  if (!Array.isArray(SETTINGS) || !DEFAULT_SETTINGS) {
+    console.warn("Unshittified YouTube: settings schema is missing in popup context.");
+    return;
+  }
+
   const api = globalThis.browser?.storage ? globalThis.browser : globalThis.chrome;
   const storageArea = api?.storage?.local;
 
