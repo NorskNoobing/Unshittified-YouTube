@@ -2,6 +2,8 @@
   const SETTINGS = [
     { key: "hideCountryCode", defaultValue: false },
     { key: "hideVoiceSearchButton", defaultValue: false },
+    { key: "hideExploreSection", defaultValue: false },
+    { key: "hideMoreFromYoutubeSection", defaultValue: false },
     { key: "hideMostRelevantSection", defaultValue: true },
     { key: "hideShortsSection", defaultValue: false }
   ];

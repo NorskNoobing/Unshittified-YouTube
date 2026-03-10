@@ -27,11 +27,27 @@
       prevDisplayAttr: "data-ytx-prev-display-voice-search",
       getTargetSections: getVoiceSearchElements,
       shouldApply: () => true
+    },
+    hideExploreSection: {
+      defaultValue: false,
+      hiddenAttr: "data-ytx-hidden-explore-sidebar",
+      prevDisplayAttr: "data-ytx-prev-display-explore-sidebar",
+      getTargetSections: getExploreSidebarSections,
+      shouldApply: () => true
+    },
+    hideMoreFromYoutubeSection: {
+      defaultValue: false,
+      hiddenAttr: "data-ytx-hidden-more-from-youtube-sidebar",
+      prevDisplayAttr: "data-ytx-prev-display-more-from-youtube-sidebar",
+      getTargetSections: getMoreFromYoutubeSidebarSections,
+      shouldApply: () => true
     }
   };
+
   const DEFAULT_SETTINGS = Object.fromEntries(
     Object.entries(SETTINGS_CONFIG).map(([key, config]) => [key, config.defaultValue])
   );
+
   const api = globalThis.browser?.storage ? globalThis.browser : globalThis.chrome;
   const storageArea = api?.storage?.local;
 
@@ -42,9 +58,13 @@
     return location.pathname === "/feed/subscriptions";
   }
 
+  function normalizeText(value) {
+    return (value || "").replace(/\s+/g, " ").trim().toLowerCase();
+  }
+
   function getTitleText(shelfElement) {
     const titleNode = shelfElement.querySelector("#title");
-    return (titleNode?.textContent || "").trim().toLowerCase();
+    return normalizeText(titleNode?.textContent || "");
   }
 
   function collectSections(elements, matcher) {
@@ -141,6 +161,29 @@
         "ytd-masthead #voice-search-button"
       )
     ];
+  }
+
+  function getGuideSectionTitle(sectionElement) {
+    const titleNode = sectionElement.querySelector("#guide-section-title");
+    return normalizeText(titleNode?.textContent || "");
+  }
+
+  function getGuideSectionsByTitles(titleList) {
+    const wantedTitles = new Set(titleList.map((title) => normalizeText(title)));
+    const sections = document.querySelectorAll("ytd-guide-renderer ytd-guide-section-renderer");
+
+    return [...sections].filter((section) => {
+      const sectionTitle = getGuideSectionTitle(section);
+      return wantedTitles.has(sectionTitle);
+    });
+  }
+
+  function getExploreSidebarSections() {
+    return getGuideSectionsByTitles(["Explore"]);
+  }
+
+  function getMoreFromYoutubeSidebarSections() {
+    return getGuideSectionsByTitles(["More from YouTube"]);
   }
 
   function hideElementForFeature(element, config) {
