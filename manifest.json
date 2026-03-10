@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "YouTube Tweaks",
+  "name": "Unshittified YouTube",
   "description": "Toggleable YouTube UI tweaks for Chrome and Firefox.",
   "version": "0.1.0",
   "permissions": [
@@ -21,7 +21,7 @@
     }
   ],
   "action": {
-    "default_title": "YouTube Tweaks",
+    "default_title": "Unshittified YouTube",
     "default_popup": "popup.html"
   }
 }
