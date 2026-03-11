@@ -47,7 +47,13 @@
       prevDisplayAttr: "data-ytx-prev-display-subscription-channels",
       getTargetSections: getSubscriptionsChannelElements,
       shouldApply: () => true
-    }
+    },
+    hideSidebarFooter: {
+      hiddenAttr: "data-ytx-hidden-sidebar-footer",
+      prevDisplayAttr: "data-ytx-prev-display-sidebar-footer",
+      getTargetSections: getSidebarFooterElements,
+      shouldApply: () => true
+    },
   };
 
   const api = globalThis.browser?.storage ? globalThis.browser : globalThis.chrome;
@@ -257,6 +263,12 @@
     }
 
     return getGuideSectionsByTitles(["More from YouTube"]);
+  }
+
+  function getSidebarFooterElements() {
+    return [
+      ...document.querySelectorAll("ytd-guide-renderer #footer")
+    ];
   }
 
   function getSubscriptionsChannelElements() {
