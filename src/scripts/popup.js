@@ -135,7 +135,7 @@
       return;
     }
 
-    const url = api?.runtime?.getURL ? api.runtime.getURL("config-tools.html") : "config-tools.html";
+    const url = api?.runtime?.getURL ? api.runtime.getURL("src/pages/config-tools.html") : "src/pages/config-tools.html";
     window.open(url, "_blank", "noopener");
   }
 
