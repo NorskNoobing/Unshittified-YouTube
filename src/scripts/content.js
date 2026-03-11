@@ -170,21 +170,92 @@
     return normalizeText(titleNode?.textContent || "");
   }
 
+  function getAllGuideSections() {
+    return [...document.querySelectorAll("ytd-guide-renderer ytd-guide-section-renderer")];
+  }
+
   function getGuideSectionsByTitles(titleList) {
     const wantedTitles = new Set(titleList.map((title) => normalizeText(title)));
-    const sections = document.querySelectorAll("ytd-guide-renderer ytd-guide-section-renderer");
 
-    return [...sections].filter((section) => {
+    return getAllGuideSections().filter((section) => {
       const sectionTitle = getGuideSectionTitle(section);
       return wantedTitles.has(sectionTitle);
     });
   }
 
+  function normalizeGuideEndpointHref(rawHref) {
+    if (!rawHref) {
+      return "";
+    }
+
+    try {
+      const parsed = new URL(rawHref, location.origin);
+      const host = parsed.hostname.toLowerCase();
+      const path = parsed.pathname.toLowerCase();
+      const search = parsed.search.toLowerCase();
+      return `${host}${path}${search}`;
+    } catch (error) {
+      return String(rawHref).toLowerCase();
+    }
+  }
+
+  function getGuideSectionEndpointHrefs(sectionElement) {
+    return [
+      ...sectionElement.querySelectorAll('#items a#endpoint[href]')
+    ].map((endpoint) => normalizeGuideEndpointHref(endpoint.getAttribute("href")));
+  }
+
+  function getGuideSectionsByEndpointMatchers(matchers, minMatches = 1) {
+    return getAllGuideSections().filter((section) => {
+      if (!getGuideSectionTitle(section)) {
+        return false;
+      }
+
+      const hrefs = getGuideSectionEndpointHrefs(section);
+      if (hrefs.length === 0) {
+        return false;
+      }
+
+      let matches = 0;
+      for (const matcher of matchers) {
+        if (hrefs.some((href) => matcher.test(href))) {
+          matches += 1;
+        }
+      }
+
+      return matches >= minMatches;
+    });
+  }
+
+  const EXPLORE_ENDPOINT_MATCHERS = [
+    /\/channel\/uc-9-kytw8zkzndhqj6fgpwq(?:[/?#]|$)/,
+    /\/feed\/storefront(?:[/?#]|$)/,
+    /\/gaming(?:[/?#]|$)/,
+    /\/feed\/trending(?:[/?#]|$)/
+  ];
+
+  const MORE_FROM_YOUTUBE_ENDPOINT_MATCHERS = [
+    /(?:^|\.)youtube\.com\/premium(?:[/?#]|$)/,
+    /^studio\.youtube\.com\//,
+    /^music\.youtube\.com\//,
+    /(?:^|\.)youtubekids\.com\//
+  ];
+
   function getExploreSidebarSections() {
+    const matchedByEndpoints = getGuideSectionsByEndpointMatchers(EXPLORE_ENDPOINT_MATCHERS, 1);
+    if (matchedByEndpoints.length > 0) {
+      return matchedByEndpoints;
+    }
+
     return getGuideSectionsByTitles(["Explore"]);
   }
 
   function getMoreFromYoutubeSidebarSections() {
+    const matchedByEndpoints = getGuideSectionsByEndpointMatchers(MORE_FROM_YOUTUBE_ENDPOINT_MATCHERS, 1);
+    if (matchedByEndpoints.length > 0) {
+      return matchedByEndpoints;
+    }
+
     return getGuideSectionsByTitles(["More from YouTube"]);
   }
 
