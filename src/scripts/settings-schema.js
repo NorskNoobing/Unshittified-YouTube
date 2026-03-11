@@ -6,6 +6,7 @@
     { key: "hideMoreFromYoutubeSection", defaultValue: false },
     { key: "hideSubscriptionChannels", defaultValue: false },
     { key: "hideSidebarFooter", defaultValue: false },
+    { key: "hideSettingsHelpSection", defaultValue: false },
     { key: "hideMostRelevantSection", defaultValue: false },
     { key: "hideShortsSection", defaultValue: false }
   ]);

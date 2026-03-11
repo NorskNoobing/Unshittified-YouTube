@@ -54,6 +54,12 @@
       getTargetSections: getSidebarFooterElements,
       shouldApply: () => true
     },
+    hideSettingsHelpSection: {
+      hiddenAttr: "data-ytx-hidden-settings-help-sidebar",
+      prevDisplayAttr: "data-ytx-prev-display-settings-help-sidebar",
+      getTargetSections: getSettingsHelpSidebarSections,
+      shouldApply: () => true
+    },
   };
 
   const api = globalThis.browser?.storage ? globalThis.browser : globalThis.chrome;
@@ -211,9 +217,11 @@
     ].map((endpoint) => normalizeGuideEndpointHref(endpoint.getAttribute("href")));
   }
 
-  function getGuideSectionsByEndpointMatchers(matchers, minMatches = 1) {
+  function getGuideSectionsByEndpointMatchers(matchers, minMatches = 1, options = {}) {
+    const requireTitle = options.requireTitle ?? true;
+
     return getAllGuideSections().filter((section) => {
-      if (!getGuideSectionTitle(section)) {
+      if (requireTitle && !getGuideSectionTitle(section)) {
         return false;
       }
 
@@ -247,6 +255,11 @@
     /(?:^|\.)youtubekids\.com\//
   ];
 
+  const SETTINGS_HELP_ENDPOINT_MATCHERS = [
+    /\/account(?:[/?#]|$)/,
+    /\/reporthistory(?:[/?#]|$)/
+  ];
+
   function getExploreSidebarSections() {
     const matchedByEndpoints = getGuideSectionsByEndpointMatchers(EXPLORE_ENDPOINT_MATCHERS, 1);
     if (matchedByEndpoints.length > 0) {
@@ -257,12 +270,18 @@
   }
 
   function getMoreFromYoutubeSidebarSections() {
-    const matchedByEndpoints = getGuideSectionsByEndpointMatchers(MORE_FROM_YOUTUBE_ENDPOINT_MATCHERS, 1);
+    const matchedByEndpoints = getGuideSectionsByEndpointMatchers(MORE_FROM_YOUTUBE_ENDPOINT_MATCHERS, 2);
     if (matchedByEndpoints.length > 0) {
       return matchedByEndpoints;
     }
 
     return getGuideSectionsByTitles(["More from YouTube"]);
+  }
+
+  function getSettingsHelpSidebarSections() {
+    return getGuideSectionsByEndpointMatchers(SETTINGS_HELP_ENDPOINT_MATCHERS, 2, {
+      requireTitle: false
+    });
   }
 
   function getSidebarFooterElements() {
@@ -332,12 +351,16 @@
         continue;
       }
 
-      if (!config.shouldApply()) {
-        continue;
-      }
+      try {
+        if (!config.shouldApply()) {
+          continue;
+        }
 
-      for (const section of config.getTargetSections()) {
-        hideElementForFeature(section, config);
+        for (const section of config.getTargetSections()) {
+          hideElementForFeature(section, config);
+        }
+      } catch (error) {
+        console.warn(`Unshittified YouTube: failed to apply ${key}.`, error);
       }
     }
   }
