@@ -55,6 +55,9 @@ No build step is required.
 
 Reload the unpacked extension after code changes.
 
+## Security
+For private vulnerability disclosure, see [SECURITY](SECURITY.md).
+
 ## License
 Licensed under the Apache License, Version 2.0.
 
