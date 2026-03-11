@@ -7,6 +7,7 @@ All features should be individually toggleable by the user.
 - Theme and style overrides for YouTube pages
 - Layout tweaks (spacing, typography, sidebar/video page polish)
 - Cross-browser compatibility (Manifest V3 where possible, browser API abstraction)
+- Language-agnostic DOM matching (prefer stable IDs/endpoints/structure over localized UI text)
 - Per-feature toggles in a settings UI with persistent storage
 
 ## Future skills
