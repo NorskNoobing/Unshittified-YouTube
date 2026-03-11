@@ -60,6 +60,12 @@
       getTargetSections: getSettingsHelpSidebarSections,
       shouldApply: () => true
     },
+    addReportHistoryToProfileMenu: {
+      hiddenAttr: "data-ytx-hidden-profile-report-history-noop",
+      prevDisplayAttr: "data-ytx-prev-profile-report-history-noop",
+      getTargetSections: () => [],
+      shouldApply: () => true
+    },
   };
 
   const api = globalThis.browser?.storage ? globalThis.browser : globalThis.chrome;
@@ -69,6 +75,9 @@
   let scheduleQueued = false;
   const YOU_SECTION_DIVIDER_ATTR = "data-ytx-hide-you-section-divider";
   const YOU_SECTION_PREV_STYLE_ATTR = "data-ytx-prev-you-section-style";
+  const PROFILE_MENU_REPORT_HISTORY_ATTR = "data-ytx-profile-report-history-entry";
+  const HELP_MENU_ICON_PATH = "M12 1C5.925 1 1 5.925 1 12s4.925 11 11 11 11-4.925 11-11S18.075 1 12 1Zm0 2a9 9 0 110 18.001A9 9 0 0112 3Zm.5 3h-.483a3.45 3.45 0 00-3.089 1.909l-.323.644a1 1 0 001.79.894l.322-.643a1.46 1.46 0 011.3-.804h.483a1.5 1.5 0 01.153 2.992l-.306.016A1.5 1.5 0 0011 12.5v1a1 1 0 002 0v-.535A3.5 3.5 0 0012.5 6Zm-.5 9.75a1.25 1.25 0 100 2.5 1.25 1.25 0 000-2.5Z";
+  const REPORT_HISTORY_ICON_PATH = "m4 2.999-.146.073A1.55 1.55 0 003 4.454v16.545a1 1 0 102 0v-6.491a7.26 7.26 0 016.248.115l.752.376a8.94 8.94 0 008 0l.145-.073c.524-.262.855-.797.855-1.382V4.458a1.21 1.21 0 00-1.752-1.083 7.26 7.26 0 01-6.496 0L12 2.999a8.94 8.94 0 00-8 0Zm7.105 1.79v-.002l.752.376A9.26 9.26 0 0019 5.641v7.62a6.95 6.95 0 01-6.105-.052l-.752-.376A9.261 9.261 0 005 12.355v-7.62a6.94 6.94 0 016.105.054Z";
 
   function isSubscriptionsPage() {
     return location.pathname === "/feed/subscriptions";
@@ -366,6 +375,178 @@
     }
   }
 
+  function removeInjectedProfileReportHistoryEntries() {
+    for (const node of document.querySelectorAll(`ytd-compact-link-renderer[${PROFILE_MENU_REPORT_HISTORY_ATTR}="1"]`)) {
+      node.remove();
+    }
+  }
+
+  function shouldAddReportHistoryToProfileMenu() {
+    return Boolean(currentSettings.addReportHistoryToProfileMenu);
+  }
+
+  function isElementVisible(element) {
+    return Boolean(element && element.isConnected && element.getClientRects().length > 0);
+  }
+
+  function isHelpProfileMenuItem(compactLinkRenderer) {
+    if (!isElementVisible(compactLinkRenderer)) {
+      return false;
+    }
+
+    const endpoint = compactLinkRenderer.querySelector("a#endpoint");
+    if (endpoint?.hasAttribute("href")) {
+      return false;
+    }
+
+    const labelText = normalizeText(compactLinkRenderer.querySelector("#label")?.textContent || "");
+    if (labelText === "help") {
+      return true;
+    }
+
+    const iconPath = compactLinkRenderer.querySelector("#content-icon yt-icon path")?.getAttribute("d") || "";
+    return iconPath === HELP_MENU_ICON_PATH;
+  }
+
+  function setReportHistoryIcon(compactLinkRenderer) {
+    const contentIcon = compactLinkRenderer.querySelector("#content-icon");
+    if (!contentIcon) {
+      return;
+    }
+
+    contentIcon.removeAttribute("hidden");
+
+    let iconHost = contentIcon.querySelector("yt-icon");
+    if (!iconHost) {
+      iconHost = document.createElement("yt-icon");
+      iconHost.className = "style-scope ytd-compact-link-renderer";
+      contentIcon.append(iconHost);
+    }
+
+    iconHost.removeAttribute("hidden");
+    iconHost.innerHTML = `
+      <span class="yt-icon-shape style-scope yt-icon ytSpecIconShapeHost">
+        <div style="width: 100%; height: 100%; display: block; fill: currentcolor;">
+          <svg xmlns="http://www.w3.org/2000/svg" height="24" viewBox="0 0 24 24" width="24" focusable="false" aria-hidden="true" style="pointer-events: none; display: inherit; width: 100%; height: 100%;">
+            <path d="${REPORT_HISTORY_ICON_PATH}"></path>
+          </svg>
+        </div>
+      </span>
+    `;
+  }
+
+  function hydrateProfileReportHistoryItem(compactLinkRenderer) {
+    if (!compactLinkRenderer) {
+      return;
+    }
+
+    const endpoint = compactLinkRenderer.querySelector("a#endpoint");
+    if (!endpoint) {
+      return;
+    }
+
+    endpoint.setAttribute("href", "/reporthistory");
+    endpoint.setAttribute("title", "Report history");
+    endpoint.removeAttribute("hidden");
+
+    const contentIcon = compactLinkRenderer.querySelector("#content-icon");
+    if (contentIcon) {
+      contentIcon.removeAttribute("hidden");
+    }
+
+    const primaryTextContainer = compactLinkRenderer.querySelector("#primary-text-container");
+    if (primaryTextContainer) {
+      primaryTextContainer.removeAttribute("hidden");
+    }
+
+    const labelNode = compactLinkRenderer.querySelector("#label");
+    if (labelNode) {
+      labelNode.textContent = "Report history";
+      labelNode.removeAttribute("is-empty");
+      labelNode.removeAttribute("hidden");
+    }
+
+    const subtitleNode = compactLinkRenderer.querySelector("#subtitle");
+    if (subtitleNode) {
+      subtitleNode.textContent = "";
+      subtitleNode.setAttribute("is-empty", "");
+    }
+
+    const secondaryTextNode = compactLinkRenderer.querySelector("#secondary-text");
+    if (secondaryTextNode) {
+      secondaryTextNode.textContent = "";
+      secondaryTextNode.setAttribute("hidden", "");
+      secondaryTextNode.setAttribute("is-empty", "");
+    }
+
+    setReportHistoryIcon(compactLinkRenderer);
+  }
+
+  function createProfileReportHistoryItem(helpItem) {
+    const clonedItem = helpItem.cloneNode(true);
+    clonedItem.setAttribute(PROFILE_MENU_REPORT_HISTORY_ATTR, "1");
+    hydrateProfileReportHistoryItem(clonedItem);
+
+    return clonedItem;
+  }
+
+  function applyProfileReportHistoryMenuState() {
+    if (!shouldAddReportHistoryToProfileMenu()) {
+      removeInjectedProfileReportHistoryEntries();
+      return;
+    }
+
+    const profileMenus = document.querySelectorAll("ytd-popup-container ytd-multi-page-menu-renderer");
+
+    for (const profileMenu of profileMenus) {
+      if (!profileMenu.querySelector("#header ytd-active-account-header-renderer")) {
+        continue;
+      }
+
+      const sectionsRoot = profileMenu.querySelector("#container #sections");
+      if (!sectionsRoot) {
+        continue;
+      }
+
+      const helpItem = [
+        ...sectionsRoot.querySelectorAll(
+          "yt-multi-page-menu-section-renderer > #items > ytd-compact-link-renderer"
+        )
+      ].find(isHelpProfileMenuItem);
+
+      if (!helpItem) {
+        continue;
+      }
+
+      const existingReportHistoryItem = sectionsRoot.querySelector(
+        `ytd-compact-link-renderer[${PROFILE_MENU_REPORT_HISTORY_ATTR}="1"]`
+      );
+      if (existingReportHistoryItem) {
+        hydrateProfileReportHistoryItem(existingReportHistoryItem);
+        if (existingReportHistoryItem.nextElementSibling !== helpItem) {
+          helpItem.before(existingReportHistoryItem);
+        }
+        continue;
+      }
+
+      if (
+        sectionsRoot.querySelector(
+          `ytd-compact-link-renderer:not([${PROFILE_MENU_REPORT_HISTORY_ATTR}="1"]) a#endpoint[href="/reporthistory"]`
+        )
+      ) {
+        continue;
+      }
+
+      const reportHistoryItem = createProfileReportHistoryItem(helpItem);
+      if (!reportHistoryItem) {
+        continue;
+      }
+
+      helpItem.before(reportHistoryItem);
+      hydrateProfileReportHistoryItem(reportHistoryItem);
+    }
+  }
+
   function hideElementForFeature(element, config) {
     if (element.getAttribute(config.hiddenAttr) === "1") {
       return;
@@ -410,6 +591,7 @@
     }
 
     applyYouSectionDividerState();
+    applyProfileReportHistoryMenuState();
   }
 
   function scheduleApply() {

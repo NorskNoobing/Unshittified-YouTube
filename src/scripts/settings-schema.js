@@ -7,6 +7,7 @@
     { key: "hideSubscriptionChannels", defaultValue: false },
     { key: "hideSidebarFooter", defaultValue: false },
     { key: "hideSettingsHelpSection", defaultValue: false },
+    { key: "addReportHistoryToProfileMenu", defaultValue: false },
     { key: "hideMostRelevantSection", defaultValue: false },
     { key: "hideShortsSection", defaultValue: false }
   ]);
