@@ -59,14 +59,9 @@
       prevDisplayAttr: "data-ytx-prev-display-settings-help-sidebar",
       getTargetSections: getSettingsHelpSidebarSections,
       shouldApply: () => true
-    },
-    addReportHistoryToProfileMenu: {
-      hiddenAttr: "data-ytx-hidden-profile-report-history-noop",
-      prevDisplayAttr: "data-ytx-prev-profile-report-history-noop",
-      getTargetSections: () => [],
-      shouldApply: () => true
-    },
+    }
   };
+  const SETTING_KEYS = Object.keys(DEFAULT_SETTINGS);
 
   const api = globalThis.browser?.storage ? globalThis.browser : globalThis.chrome;
   const storageArea = api?.storage?.local;
@@ -76,8 +71,6 @@
   const YOU_SECTION_DIVIDER_ATTR = "data-ytx-hide-you-section-divider";
   const YOU_SECTION_PREV_STYLE_ATTR = "data-ytx-prev-you-section-style";
   const PROFILE_MENU_REPORT_HISTORY_ATTR = "data-ytx-profile-report-history-entry";
-  const HELP_MENU_ICON_PATH = "M12 1C5.925 1 1 5.925 1 12s4.925 11 11 11 11-4.925 11-11S18.075 1 12 1Zm0 2a9 9 0 110 18.001A9 9 0 0112 3Zm.5 3h-.483a3.45 3.45 0 00-3.089 1.909l-.323.644a1 1 0 001.79.894l.322-.643a1.46 1.46 0 011.3-.804h.483a1.5 1.5 0 01.153 2.992l-.306.016A1.5 1.5 0 0011 12.5v1a1 1 0 002 0v-.535A3.5 3.5 0 0012.5 6Zm-.5 9.75a1.25 1.25 0 100 2.5 1.25 1.25 0 000-2.5Z";
-  const REPORT_HISTORY_ICON_PATH = "m4 2.999-.146.073A1.55 1.55 0 003 4.454v16.545a1 1 0 102 0v-6.491a7.26 7.26 0 016.248.115l.752.376a8.94 8.94 0 008 0l.145-.073c.524-.262.855-.797.855-1.382V4.458a1.21 1.21 0 00-1.752-1.083 7.26 7.26 0 01-6.496 0L12 2.999a8.94 8.94 0 00-8 0Zm7.105 1.79v-.002l.752.376A9.26 9.26 0 0019 5.641v7.62a6.95 6.95 0 01-6.105-.052l-.752-.376A9.261 9.261 0 005 12.355v-7.62a6.94 6.94 0 016.105.054Z";
 
   function isSubscriptionsPage() {
     return location.pathname === "/feed/subscriptions";
@@ -381,34 +374,16 @@
     }
   }
 
-  function shouldAddReportHistoryToProfileMenu() {
-    return Boolean(currentSettings.addReportHistoryToProfileMenu);
+  function getReportHistoryIconPath() {
+    const sidebarIconPath = document.querySelector('ytd-guide-renderer a#endpoint[href="/reporthistory"] yt-icon path');
+    return sidebarIconPath?.getAttribute("d") || "";
   }
 
-  function isElementVisible(element) {
-    return Boolean(element && element.isConnected && element.getClientRects().length > 0);
-  }
-
-  function isHelpProfileMenuItem(compactLinkRenderer) {
-    if (!isElementVisible(compactLinkRenderer)) {
-      return false;
+  function setProfileMenuIcon(compactLinkRenderer, iconPath) {
+    if (!iconPath) {
+      return;
     }
 
-    const endpoint = compactLinkRenderer.querySelector("a#endpoint");
-    if (endpoint?.hasAttribute("href")) {
-      return false;
-    }
-
-    const labelText = normalizeText(compactLinkRenderer.querySelector("#label")?.textContent || "");
-    if (labelText === "help") {
-      return true;
-    }
-
-    const iconPath = compactLinkRenderer.querySelector("#content-icon yt-icon path")?.getAttribute("d") || "";
-    return iconPath === HELP_MENU_ICON_PATH;
-  }
-
-  function setReportHistoryIcon(compactLinkRenderer) {
     const contentIcon = compactLinkRenderer.querySelector("#content-icon");
     if (!contentIcon) {
       return;
@@ -428,14 +403,14 @@
       <span class="yt-icon-shape style-scope yt-icon ytSpecIconShapeHost">
         <div style="width: 100%; height: 100%; display: block; fill: currentcolor;">
           <svg xmlns="http://www.w3.org/2000/svg" height="24" viewBox="0 0 24 24" width="24" focusable="false" aria-hidden="true" style="pointer-events: none; display: inherit; width: 100%; height: 100%;">
-            <path d="${REPORT_HISTORY_ICON_PATH}"></path>
+            <path d="${iconPath}"></path>
           </svg>
         </div>
       </span>
     `;
   }
 
-  function hydrateProfileReportHistoryItem(compactLinkRenderer) {
+  function renderProfileReportHistoryItem(compactLinkRenderer, iconPath) {
     if (!compactLinkRenderer) {
       return;
     }
@@ -479,23 +454,48 @@
       secondaryTextNode.setAttribute("is-empty", "");
     }
 
-    setReportHistoryIcon(compactLinkRenderer);
+    setProfileMenuIcon(compactLinkRenderer, iconPath);
   }
 
-  function createProfileReportHistoryItem(helpItem) {
+  function createProfileReportHistoryItem(helpItem, iconPath) {
     const clonedItem = helpItem.cloneNode(true);
     clonedItem.setAttribute(PROFILE_MENU_REPORT_HISTORY_ATTR, "1");
-    hydrateProfileReportHistoryItem(clonedItem);
+    renderProfileReportHistoryItem(clonedItem, iconPath);
 
     return clonedItem;
   }
 
+  function findProfileMenuHelpItem(sectionsRoot) {
+    const menuItems = sectionsRoot.querySelectorAll(
+      "yt-multi-page-menu-section-renderer > #items > ytd-compact-link-renderer"
+    );
+
+    for (const item of menuItems) {
+      if (!item.isConnected || item.getClientRects().length === 0) {
+        continue;
+      }
+
+      const endpoint = item.querySelector("a#endpoint");
+      if (endpoint?.hasAttribute("href")) {
+        continue;
+      }
+
+      const labelText = normalizeText(item.querySelector("#label")?.textContent || "");
+      if (labelText === "help") {
+        return item;
+      }
+    }
+
+    return null;
+  }
+
   function applyProfileReportHistoryMenuState() {
-    if (!shouldAddReportHistoryToProfileMenu()) {
+    if (!currentSettings.addReportHistoryToProfileMenu) {
       removeInjectedProfileReportHistoryEntries();
       return;
     }
 
+    const iconPath = getReportHistoryIconPath();
     const profileMenus = document.querySelectorAll("ytd-popup-container ytd-multi-page-menu-renderer");
 
     for (const profileMenu of profileMenus) {
@@ -508,12 +508,7 @@
         continue;
       }
 
-      const helpItem = [
-        ...sectionsRoot.querySelectorAll(
-          "yt-multi-page-menu-section-renderer > #items > ytd-compact-link-renderer"
-        )
-      ].find(isHelpProfileMenuItem);
-
+      const helpItem = findProfileMenuHelpItem(sectionsRoot);
       if (!helpItem) {
         continue;
       }
@@ -521,8 +516,9 @@
       const existingReportHistoryItem = sectionsRoot.querySelector(
         `ytd-compact-link-renderer[${PROFILE_MENU_REPORT_HISTORY_ATTR}="1"]`
       );
+
       if (existingReportHistoryItem) {
-        hydrateProfileReportHistoryItem(existingReportHistoryItem);
+        renderProfileReportHistoryItem(existingReportHistoryItem, iconPath);
         if (existingReportHistoryItem.nextElementSibling !== helpItem) {
           helpItem.before(existingReportHistoryItem);
         }
@@ -537,13 +533,8 @@
         continue;
       }
 
-      const reportHistoryItem = createProfileReportHistoryItem(helpItem);
-      if (!reportHistoryItem) {
-        continue;
-      }
-
+      const reportHistoryItem = createProfileReportHistoryItem(helpItem, iconPath);
       helpItem.before(reportHistoryItem);
-      hydrateProfileReportHistoryItem(reportHistoryItem);
     }
   }
 
@@ -636,7 +627,7 @@
   async function loadSettings() {
     const settings = await getSettings(DEFAULT_SETTINGS);
 
-    for (const [key] of Object.entries(SETTINGS_CONFIG)) {
+    for (const key of SETTING_KEYS) {
       const value = settings[key];
       currentSettings[key] = value === undefined ? Boolean(DEFAULT_SETTINGS[key]) : Boolean(value);
     }
@@ -651,8 +642,8 @@
 
     api.storage.onChanged.addListener((changes) => {
       let hasRelevantChange = false;
-      for (const [key] of Object.entries(SETTINGS_CONFIG)) {
-        if (!changes[key]) {
+      for (const key of SETTING_KEYS) {
+        if (!Object.prototype.hasOwnProperty.call(changes, key)) {
           continue;
         }
 
