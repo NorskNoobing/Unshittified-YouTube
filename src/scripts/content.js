@@ -67,6 +67,8 @@
 
   const currentSettings = { ...DEFAULT_SETTINGS };
   let scheduleQueued = false;
+  const YOU_SECTION_DIVIDER_ATTR = "data-ytx-hide-you-section-divider";
+  const YOU_SECTION_PREV_STYLE_ATTR = "data-ytx-prev-you-section-style";
 
   function isSubscriptionsPage() {
     return location.pathname === "/feed/subscriptions";
@@ -321,6 +323,49 @@
     return elementsToHide;
   }
 
+  function clearYouDividerOverrides() {
+    for (const node of document.querySelectorAll(`[${YOU_SECTION_DIVIDER_ATTR}="1"]`)) {
+      const previousStyle = node.getAttribute(YOU_SECTION_PREV_STYLE_ATTR) || "";
+      if (previousStyle) {
+        node.setAttribute("style", previousStyle);
+      } else {
+        node.removeAttribute("style");
+      }
+
+      node.removeAttribute(YOU_SECTION_DIVIDER_ATTR);
+      node.removeAttribute(YOU_SECTION_PREV_STYLE_ATTR);
+    }
+  }
+
+  function shouldHideYouSectionDivider() {
+    return Boolean(
+      currentSettings.hideExploreSection
+      && currentSettings.hideMoreFromYoutubeSection
+      && currentSettings.hideSidebarFooter
+      && currentSettings.hideSettingsHelpSection
+    );
+  }
+
+  function applyYouSectionDividerState() {
+    clearYouDividerOverrides();
+
+    if (!shouldHideYouSectionDivider()) {
+      return;
+    }
+
+    const youSections = getAllGuideSections().filter((section) =>
+      Boolean(section.querySelector('#header #endpoint[href="/feed/you"]'))
+    );
+
+    for (const youSection of youSections) {
+      youSection.setAttribute(YOU_SECTION_DIVIDER_ATTR, "1");
+      youSection.setAttribute(YOU_SECTION_PREV_STYLE_ATTR, youSection.getAttribute("style") || "");
+      youSection.style.setProperty("border-bottom", "0", "important");
+      youSection.style.setProperty("margin-bottom", "0", "important");
+      youSection.style.setProperty("padding-bottom", "0", "important");
+    }
+  }
+
   function hideElementForFeature(element, config) {
     if (element.getAttribute(config.hiddenAttr) === "1") {
       return;
@@ -363,6 +408,8 @@
         console.warn(`Unshittified YouTube: failed to apply ${key}.`, error);
       }
     }
+
+    applyYouSectionDividerState();
   }
 
   function scheduleApply() {
