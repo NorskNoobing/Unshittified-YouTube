@@ -9,6 +9,7 @@
 
   const api = globalThis.browser?.storage ? globalThis.browser : globalThis.chrome;
   const storageArea = api?.storage?.local;
+  let statusTimeout = null;
 
   function getFromStorage(defaults) {
     if (!storageArea) {
@@ -24,8 +25,16 @@
       // Fall back to callback-style API.
     }
 
-    return new Promise((resolve) => {
-      storageArea.get(defaults, resolve);
+    return new Promise((resolve, reject) => {
+      storageArea.get(defaults, (items) => {
+        const lastError = api?.runtime?.lastError;
+        if (lastError) {
+          reject(new Error(lastError.message));
+          return;
+        }
+
+        resolve(items);
+      });
     });
   }
 
@@ -43,8 +52,16 @@
       // Fall back to callback-style API.
     }
 
-    return new Promise((resolve) => {
-      storageArea.set(values, resolve);
+    return new Promise((resolve, reject) => {
+      storageArea.set(values, () => {
+        const lastError = api?.runtime?.lastError;
+        if (lastError) {
+          reject(new Error(lastError.message));
+          return;
+        }
+
+        resolve();
+      });
     });
   }
 
@@ -62,6 +79,30 @@
     } catch (error) {
       // Ignore storage write failures.
     }
+  }
+
+  function showStatus(message, tone) {
+    const status = document.getElementById("configStatus");
+    if (!status) {
+      return;
+    }
+
+    status.textContent = message || "";
+    status.classList.remove("is-success", "is-error");
+    if (tone === "success") {
+      status.classList.add("is-success");
+    } else if (tone === "error") {
+      status.classList.add("is-error");
+    }
+
+    if (statusTimeout) {
+      clearTimeout(statusTimeout);
+    }
+
+    statusTimeout = setTimeout(() => {
+      status.textContent = "";
+      status.classList.remove("is-success", "is-error");
+    }, 3200);
   }
 
   function initSectionButtons() {
@@ -85,6 +126,34 @@
     }
   }
 
+  async function openConfigToolsPage() {
+    if (api?.runtime?.openOptionsPage) {
+      const maybePromise = api.runtime.openOptionsPage();
+      if (maybePromise && typeof maybePromise.then === "function") {
+        await maybePromise;
+      }
+      return;
+    }
+
+    const url = api?.runtime?.getURL ? api.runtime.getURL("config-tools.html") : "config-tools.html";
+    window.open(url, "_blank", "noopener");
+  }
+
+  function initConfigButton() {
+    const openToolsButton = document.getElementById("openConfigTools");
+    if (!openToolsButton) {
+      return;
+    }
+
+    openToolsButton.addEventListener("click", async () => {
+      try {
+        await openConfigToolsPage();
+      } catch (error) {
+        showStatus("Failed to open Config Tools page.", "error");
+      }
+    });
+  }
+
   async function init() {
     initSectionButtons();
     const settings = await getSettings(DEFAULT_SETTINGS);
@@ -100,6 +169,8 @@
         await setSetting(setting.key, checkbox.checked);
       });
     }
+
+    initConfigButton();
   }
 
   init();

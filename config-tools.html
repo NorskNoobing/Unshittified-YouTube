@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Config Tools - Unshittified YouTube</title>
+  <link rel="stylesheet" href="config-tools.css">
+</head>
+<body>
+  <main class="tools">
+    <h1>Config Tools</h1>
+    <p class="intro">Import and export toggle settings for Unshittified YouTube.</p>
+
+    <div class="actions">
+      <button id="exportConfig" type="button">Export toggles</button>
+      <button id="importConfigButton" type="button">Import toggles</button>
+      <input id="importConfigFile" type="file" accept=".json,application/json" hidden>
+    </div>
+
+    <p id="status" class="status" role="status" aria-live="polite"></p>
+  </main>
+  <script src="settings-schema.js"></script>
+  <script src="config-tools.js"></script>
+</body>
+</html>

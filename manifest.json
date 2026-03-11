@@ -21,6 +21,10 @@
       "run_at": "document_idle"
     }
   ],
+  "options_ui": {
+    "page": "config-tools.html",
+    "open_in_tab": true
+  },
   "action": {
     "default_title": "Unshittified YouTube",
     "default_popup": "popup.html"
