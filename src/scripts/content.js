@@ -283,9 +283,23 @@
   }
 
   function getSettingsHelpSidebarSections() {
-    return getGuideSectionsByEndpointMatchers(SETTINGS_HELP_ENDPOINT_MATCHERS, 2, {
+    const groupedSections = getGuideSectionsByEndpointMatchers(SETTINGS_HELP_ENDPOINT_MATCHERS, 2, {
       requireTitle: false
     });
+
+    const standaloneEntries = [
+      ...document.querySelectorAll(
+        'ytd-guide-renderer a#endpoint[href^="/account"], ytd-guide-renderer a#endpoint[href^="/reporthistory"]'
+      )
+    ]
+      .map((endpoint) =>
+        endpoint.closest(
+          "ytd-guide-entry-renderer, ytd-guide-collapsible-section-entry-renderer, ytd-guide-downloads-entry-renderer"
+        )
+      )
+      .filter(Boolean);
+
+    return [...new Set([...groupedSections, ...standaloneEntries])];
   }
 
   function getSidebarFooterElements() {
