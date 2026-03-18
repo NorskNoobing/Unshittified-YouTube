@@ -9,10 +9,14 @@
 
   const api = globalThis.browser?.storage ? globalThis.browser : globalThis.chrome;
   const storageArea = api?.storage?.local;
-  const CONFIG_SCHEMA = "unshittified-youtube-toggle-config";
-  const CONFIG_VERSION = 1;
+  const LEGACY_CONFIG_SCHEMA = "unshittified-youtube-toggle-config";
+  const CONFIG_SCHEMA = "unshittified-youtube-settings-config";
+  const CONFIG_VERSION = 2;
   const SETTING_KEYS = SETTINGS.map((setting) => setting.key);
   const SETTING_KEY_SET = new Set(SETTING_KEYS);
+  const SETTINGS_BY_KEY = Object.freeze(
+    Object.fromEntries(SETTINGS.map((setting) => [setting.key, setting]))
+  );
   let statusTimeout = null;
 
   function showStatus(message, tone) {
@@ -97,10 +101,18 @@
     return Boolean(value) && typeof value === "object" && !Array.isArray(value);
   }
 
+  function normalizeSettingValue(setting, value) {
+    if (setting.type === "select") {
+      return setting.options?.includes(value) ? value : setting.defaultValue;
+    }
+
+    return Boolean(value);
+  }
+
   function buildExportPayload(settings) {
     const exportedSettings = {};
     for (const setting of SETTINGS) {
-      exportedSettings[setting.key] = Boolean(settings[setting.key]);
+      exportedSettings[setting.key] = normalizeSettingValue(setting, settings[setting.key]);
     }
 
     return {
@@ -129,18 +141,29 @@
       throw new Error(`Missing setting keys: ${missingKeys.join(", ")}`);
     }
 
-    const invalidTypeKeys = [];
+    const invalidValueKeys = [];
     for (const key of SETTING_KEYS) {
-      if (typeof sourceSettings[key] !== "boolean") {
-        invalidTypeKeys.push(`${key} (${typeof sourceSettings[key]})`);
+      const setting = SETTINGS_BY_KEY[key];
+      const value = sourceSettings[key];
+      if (setting.type === "select") {
+        if (typeof value !== "string" || !setting.options?.includes(value)) {
+          invalidValueKeys.push(`${key} (${JSON.stringify(value)})`);
+        }
+        continue;
+      }
+
+      if (typeof value !== "boolean") {
+        invalidValueKeys.push(`${key} (${typeof value})`);
       }
     }
 
-    if (invalidTypeKeys.length > 0) {
-      throw new Error(`Setting values must be true/false: ${invalidTypeKeys.join(", ")}`);
+    if (invalidValueKeys.length > 0) {
+      throw new Error(`Invalid setting values: ${invalidValueKeys.join(", ")}`);
     }
 
-    return Object.fromEntries(SETTING_KEYS.map((key) => [key, sourceSettings[key]]));
+    return Object.fromEntries(
+      SETTINGS.map((setting) => [setting.key, normalizeSettingValue(setting, sourceSettings[setting.key])])
+    );
   }
 
   function normalizeImportedSettings(payload) {
@@ -155,11 +178,19 @@
         throw new Error("Invalid config: settings must be an object.");
       }
 
-      if (Object.prototype.hasOwnProperty.call(payload, "schema") && payload.schema !== CONFIG_SCHEMA) {
+      const schema = Object.prototype.hasOwnProperty.call(payload, "schema") ? payload.schema : CONFIG_SCHEMA;
+      const version = Object.prototype.hasOwnProperty.call(payload, "version") ? payload.version : CONFIG_VERSION;
+
+      if (schema === LEGACY_CONFIG_SCHEMA && version === 1) {
+        sourceSettings = { ...DEFAULT_SETTINGS, ...payload.settings };
+        return validateAndNormalizeSettingsObject(sourceSettings);
+      }
+
+      if (schema !== CONFIG_SCHEMA) {
         throw new Error(`Unsupported config schema: ${String(payload.schema)}`);
       }
 
-      if (Object.prototype.hasOwnProperty.call(payload, "version") && payload.version !== CONFIG_VERSION) {
+      if (version !== CONFIG_VERSION) {
         throw new Error(`Unsupported config version: ${String(payload.version)}.`);
       }
 

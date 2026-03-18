@@ -1,9 +1,14 @@
 (function () {
+  const SETTINGS = globalThis.YTX_SETTINGS;
   const DEFAULT_SETTINGS = globalThis.YTX_DEFAULT_SETTINGS;
-  if (!DEFAULT_SETTINGS) {
+  if (!Array.isArray(SETTINGS) || !DEFAULT_SETTINGS) {
     console.warn("Unshittified YouTube: settings schema is missing in content context.");
     return;
   }
+
+  const SETTINGS_BY_KEY = Object.freeze(
+    Object.fromEntries(SETTINGS.map((setting) => [setting.key, setting]))
+  );
 
   const SETTINGS_CONFIG = {
     hideMostRelevantSection: {
@@ -59,9 +64,40 @@
       prevDisplayAttr: "data-ytx-prev-display-settings-help-sidebar",
       getTargetSections: getSettingsHelpSidebarSections,
       shouldApply: () => true
+    },
+    hideJoinButton: {
+      hiddenAttr: "data-ytx-hidden-join-button",
+      prevDisplayAttr: "data-ytx-prev-display-join-button",
+      getTargetSections: getJoinButtonElements,
+      shouldApply: isWatchPage
     }
   };
   const SETTING_KEYS = Object.keys(DEFAULT_SETTINGS);
+  const WATCH_ACTIONS = Object.freeze([
+    {
+      key: "shareButtonMode",
+      label: "Share",
+      match: (labelText, buttonText) => labelText === "share" || buttonText === "share"
+    },
+    {
+      key: "saveButtonMode",
+      label: "Save",
+      match: (labelText, buttonText) =>
+        labelText === "save to playlist" || labelText === "save" || buttonText === "save"
+    },
+    {
+      key: "thanksButtonMode",
+      label: "Thanks",
+      match: (labelText, buttonText) => labelText === "thanks" || buttonText === "thanks"
+    }
+  ]);
+  const WATCH_ACTION_PLACEHOLDER_ATTR = "data-ytx-watch-action-placeholder";
+  const WATCH_ACTION_KEY_ATTR = "data-ytx-watch-action-key";
+  const WATCH_ACTION_HIDDEN_ATTR = "data-ytx-watch-action-hidden";
+  const WATCH_ACTION_PREV_DISPLAY_ATTR = "data-ytx-watch-action-prev-display";
+  const WATCH_ACTION_MENU_ITEM_ATTR = "data-ytx-watch-action-menu-item";
+  const REMOVE_ADS_HIDDEN_ATTR = "data-ytx-watch-remove-ads-hidden";
+  const REMOVE_ADS_PREV_DISPLAY_ATTR = "data-ytx-watch-remove-ads-prev-display";
 
   const api = globalThis.browser?.storage ? globalThis.browser : globalThis.chrome;
   const storageArea = api?.storage?.local;
@@ -74,6 +110,23 @@
 
   function isSubscriptionsPage() {
     return location.pathname === "/feed/subscriptions";
+  }
+
+  function isWatchPage() {
+    return location.pathname === "/watch";
+  }
+
+  function normalizeSettingValue(key, value) {
+    const setting = SETTINGS_BY_KEY[key];
+    if (!setting) {
+      return value;
+    }
+
+    if (setting.type === "select") {
+      return setting.options?.includes(value) ? value : setting.defaultValue;
+    }
+
+    return value === undefined ? Boolean(setting.defaultValue) : Boolean(value);
   }
 
   function normalizeText(value) {
@@ -339,6 +392,12 @@
     return elementsToHide;
   }
 
+  function getJoinButtonElements() {
+    return [
+      ...document.querySelectorAll("ytd-watch-metadata ytd-video-owner-renderer #sponsor-button")
+    ];
+  }
+
   function clearYouDividerOverrides() {
     for (const node of document.querySelectorAll(`[${YOU_SECTION_DIVIDER_ATTR}="1"]`)) {
       const previousStyle = node.getAttribute(YOU_SECTION_PREV_STYLE_ATTR) || "";
@@ -552,6 +611,385 @@
     }
   }
 
+  function getWatchMenuRenderer() {
+    return document.querySelector("ytd-watch-metadata #menu > ytd-menu-renderer");
+  }
+
+  function getWatchActionContainers(menuRenderer) {
+    if (!menuRenderer) {
+      return [];
+    }
+
+    return [
+      ...menuRenderer.querySelectorAll(":scope > #top-level-buttons-computed > *, :scope > #flexible-item-buttons > *")
+    ];
+  }
+
+  function getActionButtonLabel(container) {
+    const button = container.querySelector("button");
+    const ariaLabel = normalizeText(button?.getAttribute("aria-label") || "");
+    const buttonText = normalizeText(
+      button?.querySelector(".yt-spec-button-shape-next__button-text-content")?.textContent
+      || button?.textContent
+      || ""
+    );
+
+    return { button, ariaLabel, buttonText };
+  }
+
+  function findWatchActionContainer(menuRenderer, action) {
+    const containers = getWatchActionContainers(menuRenderer);
+
+    for (const container of containers) {
+      const { ariaLabel, buttonText } = getActionButtonLabel(container);
+      if (action.match(ariaLabel, buttonText)) {
+        return container;
+      }
+    }
+
+    return document.querySelector(`[${WATCH_ACTION_KEY_ATTR}="${action.key}"]`);
+  }
+
+  function ensureWatchActionPlaceholder(container, actionKey) {
+    if (!container?.isConnected) {
+      return null;
+    }
+
+    container.setAttribute(WATCH_ACTION_KEY_ATTR, actionKey);
+
+    const previousElement = container.previousElementSibling;
+    if (previousElement?.getAttribute(WATCH_ACTION_PLACEHOLDER_ATTR) === actionKey) {
+      return previousElement;
+    }
+
+    const existingPlaceholder = document.querySelector(
+      `[${WATCH_ACTION_PLACEHOLDER_ATTR}="${actionKey}"]`
+    );
+    if (existingPlaceholder) {
+      return existingPlaceholder;
+    }
+
+    const placeholder = document.createElement("span");
+    placeholder.hidden = true;
+    placeholder.setAttribute(WATCH_ACTION_PLACEHOLDER_ATTR, actionKey);
+    container.before(placeholder);
+    return placeholder;
+  }
+
+  function restoreWatchActionVisibility() {
+    for (const node of document.querySelectorAll(`[${WATCH_ACTION_HIDDEN_ATTR}="1"]`)) {
+      const previousDisplay = node.getAttribute(WATCH_ACTION_PREV_DISPLAY_ATTR) || "";
+      node.style.display = previousDisplay;
+      node.removeAttribute(WATCH_ACTION_HIDDEN_ATTR);
+      node.removeAttribute(WATCH_ACTION_PREV_DISPLAY_ATTR);
+    }
+  }
+
+  function unhideWatchActionContainer(container) {
+    if (!container || container.getAttribute(WATCH_ACTION_HIDDEN_ATTR) !== "1") {
+      return;
+    }
+
+    const previousDisplay = container.getAttribute(WATCH_ACTION_PREV_DISPLAY_ATTR) || "";
+    container.style.display = previousDisplay;
+    container.removeAttribute(WATCH_ACTION_HIDDEN_ATTR);
+    container.removeAttribute(WATCH_ACTION_PREV_DISPLAY_ATTR);
+  }
+
+  function hideWatchActionContainer(container) {
+    if (!container || container.getAttribute(WATCH_ACTION_HIDDEN_ATTR) === "1") {
+      return;
+    }
+
+    container.setAttribute(WATCH_ACTION_HIDDEN_ATTR, "1");
+    container.setAttribute(WATCH_ACTION_PREV_DISPLAY_ATTR, container.style.display || "");
+    container.style.display = "none";
+  }
+
+  function restoreWatchActionPlacement() {
+    restoreWatchActionVisibility();
+
+    for (const placeholder of document.querySelectorAll(`[${WATCH_ACTION_PLACEHOLDER_ATTR}]`)) {
+      const actionKey = placeholder.getAttribute(WATCH_ACTION_PLACEHOLDER_ATTR);
+      if (!actionKey) {
+        continue;
+      }
+
+      const actionContainer = document.querySelector(`[${WATCH_ACTION_KEY_ATTR}="${actionKey}"]`);
+      if (!actionContainer || !actionContainer.isConnected) {
+        continue;
+      }
+
+      if (actionContainer.previousElementSibling !== placeholder) {
+        placeholder.after(actionContainer);
+      }
+    }
+  }
+
+  function restoreWatchActionToPlaceholder(actionKey, actionContainer) {
+    const placeholder = getWatchActionPlaceholder(actionKey);
+    if (!placeholder || !actionContainer || actionContainer.previousElementSibling === placeholder) {
+      return;
+    }
+
+    placeholder.after(actionContainer);
+  }
+
+  function getPopupItemText(item) {
+    return normalizeText(
+      item.querySelector("yt-formatted-string")?.textContent
+      || item.querySelector(".yt-list-item-view-model__title")?.textContent
+      || item.querySelector("button")?.textContent
+      || ""
+    );
+  }
+
+  function restoreRemoveAdsMenuItems() {
+    for (const item of document.querySelectorAll(`[${REMOVE_ADS_HIDDEN_ATTR}="1"]`)) {
+      const previousDisplay = item.getAttribute(REMOVE_ADS_PREV_DISPLAY_ATTR) || "";
+      item.style.display = previousDisplay;
+      item.removeAttribute(REMOVE_ADS_HIDDEN_ATTR);
+      item.removeAttribute(REMOVE_ADS_PREV_DISPLAY_ATTR);
+    }
+  }
+
+  function getVisibleWatchActionPopups() {
+    return [
+      ...document.querySelectorAll("ytd-popup-container ytd-menu-popup-renderer")
+    ].filter(
+      (popup) =>
+        popup.isConnected
+        && popup.getClientRects().length > 0
+        && isWatchActionPopup(popup)
+    );
+  }
+
+  function isWatchActionPopup(popup) {
+    const itemTexts = [
+      ...popup.querySelectorAll("#items > *")
+    ].map((item) => getPopupItemText(item));
+
+    return itemTexts.includes("report") || itemTexts.includes("remove ads");
+  }
+
+  function getWatchActionMenuItem(actionKey) {
+    return document.querySelector(`[${WATCH_ACTION_MENU_ITEM_ATTR}="${actionKey}"]`);
+  }
+
+  function getWatchActionPlaceholder(actionKey) {
+    return document.querySelector(`[${WATCH_ACTION_PLACEHOLDER_ATTR}="${actionKey}"]`);
+  }
+
+  function restoreWatchActionMenuItem(actionKey) {
+    const actionContainer = getWatchActionMenuItem(actionKey);
+    if (!actionContainer) {
+      return;
+    }
+
+    const placeholder = getWatchActionPlaceholder(actionKey);
+    if (actionContainer && placeholder && actionContainer.previousElementSibling !== placeholder) {
+      placeholder.after(actionContainer);
+    }
+
+    actionContainer.removeAttribute(WATCH_ACTION_MENU_ITEM_ATTR);
+  }
+
+  function getWatchPopupDropdown(popup) {
+    return popup.closest("tp-yt-iron-dropdown");
+  }
+
+  function normalizeWatchPopupLayout(popup) {
+    const dropdown = getWatchPopupDropdown(popup);
+    const itemsRoot = popup.querySelector("#items");
+
+    popup.style.maxHeight = "none";
+    popup.style.maxWidth = "none";
+    popup.style.overflow = "visible";
+
+    if (itemsRoot) {
+      itemsRoot.style.maxHeight = "none";
+      itemsRoot.style.maxWidth = "none";
+      itemsRoot.style.overflow = "visible";
+    }
+
+    if (dropdown) {
+      dropdown.style.maxHeight = "none";
+      dropdown.style.maxWidth = "none";
+    }
+  }
+
+  function requestWatchPopupRelayout(popup) {
+    const dropdown = getWatchPopupDropdown(popup);
+    normalizeWatchPopupLayout(popup);
+
+    const relayoutTargets = [popup, dropdown].filter(Boolean);
+    for (const target of relayoutTargets) {
+      if (typeof target.refit === "function") {
+        try {
+          target.refit();
+        } catch (error) {
+          // Ignore component relayout failures.
+        }
+      }
+
+      if (typeof target.notifyResize === "function") {
+        try {
+          target.notifyResize();
+        } catch (error) {
+          // Ignore component relayout failures.
+        }
+      }
+    }
+
+    window.dispatchEvent(new Event("resize"));
+  }
+
+  function ensureWatchActionMenuItem(popup, action, actionContainer) {
+    const itemsRoot = popup.querySelector("#items");
+    if (!itemsRoot) {
+      return null;
+    }
+
+    actionContainer.setAttribute(WATCH_ACTION_MENU_ITEM_ATTR, action.key);
+    if (actionContainer.parentElement !== itemsRoot) {
+      itemsRoot.prepend(actionContainer);
+    }
+
+    return actionContainer;
+  }
+
+  function syncWatchActionMenuItems(actionContainers) {
+    const popups = getVisibleWatchActionPopups();
+    const menuActions = WATCH_ACTIONS.filter(
+      (action) => currentSettings[action.key] === "menu" && actionContainers[action.key]
+    );
+
+    for (const action of WATCH_ACTIONS) {
+      const shouldKeepInjectedItem = menuActions.some((menuAction) => menuAction.key === action.key)
+        && popups.length > 0;
+      if (!shouldKeepInjectedItem) {
+        restoreWatchActionMenuItem(action.key);
+      }
+    }
+
+    if (popups.length === 0 || menuActions.length === 0) {
+      return;
+    }
+
+    const popup = popups[0];
+    const itemsRoot = popup.querySelector("#items");
+    if (!itemsRoot) {
+      return;
+    }
+
+    let insertBeforeNode = itemsRoot.firstElementChild;
+    for (const action of menuActions) {
+      const injectedAction = ensureWatchActionMenuItem(popup, action, actionContainers[action.key]);
+      if (!injectedAction) {
+        continue;
+      }
+
+      if (injectedAction !== insertBeforeNode) {
+        itemsRoot.insertBefore(injectedAction, insertBeforeNode);
+      }
+
+      insertBeforeNode = injectedAction.nextElementSibling;
+    }
+
+    requestWatchPopupRelayout(popup);
+  }
+
+  function hideRemoveAdsMenuItems() {
+    if (!currentSettings.hideRemoveAdsButton || !isWatchPage()) {
+      return;
+    }
+
+    for (const popup of getVisibleWatchActionPopups()) {
+      const items = popup.querySelectorAll("#items > *");
+      for (const item of items) {
+        if (getPopupItemText(item) !== "remove ads") {
+          continue;
+        }
+
+        if (item.getAttribute(REMOVE_ADS_HIDDEN_ATTR) === "1") {
+          continue;
+        }
+
+        item.setAttribute(REMOVE_ADS_HIDDEN_ATTR, "1");
+        item.setAttribute(REMOVE_ADS_PREV_DISPLAY_ATTR, item.style.display || "");
+        item.style.display = "none";
+      }
+
+      requestWatchPopupRelayout(popup);
+    }
+  }
+
+  function applyWatchPageActionState() {
+    restoreRemoveAdsMenuItems();
+
+    if (!isWatchPage()) {
+      for (const action of WATCH_ACTIONS) {
+        restoreWatchActionMenuItem(action.key);
+      }
+      restoreWatchActionPlacement();
+      return;
+    }
+
+    const menuRenderer = getWatchMenuRenderer();
+    const flexibleButtons = menuRenderer?.querySelector(":scope > #flexible-item-buttons");
+    const actionContainers = {};
+
+    for (const action of WATCH_ACTIONS) {
+      const actionContainer = findWatchActionContainer(menuRenderer, action);
+      if (!actionContainer) {
+        continue;
+      }
+
+      ensureWatchActionPlaceholder(actionContainer, action.key);
+      actionContainers[action.key] = actionContainer;
+    }
+
+    syncWatchActionMenuItems(actionContainers);
+
+    for (const action of WATCH_ACTIONS) {
+      const actionContainer = actionContainers[action.key];
+      if (!actionContainer) {
+        continue;
+      }
+
+      const mode = currentSettings[action.key];
+      const injectedMenuItem = getWatchActionMenuItem(action.key);
+
+      if (mode !== "menu" || !injectedMenuItem) {
+        restoreWatchActionMenuItem(action.key);
+      }
+
+      if (mode === "row" && flexibleButtons) {
+        unhideWatchActionContainer(actionContainer);
+        if (actionContainer.parentElement !== flexibleButtons) {
+          flexibleButtons.append(actionContainer);
+        }
+        continue;
+      }
+
+      if (mode === "menu" && getWatchActionMenuItem(action.key)) {
+        unhideWatchActionContainer(actionContainer);
+        continue;
+      }
+
+      if (mode === "hide" || mode === "menu") {
+        restoreWatchActionToPlaceholder(action.key, actionContainer);
+        hideWatchActionContainer(actionContainer);
+        continue;
+      }
+
+      restoreWatchActionToPlaceholder(action.key, actionContainer);
+      unhideWatchActionContainer(actionContainer);
+    }
+
+    hideRemoveAdsMenuItems();
+  }
+
   function hideElementForFeature(element, config) {
     if (element.getAttribute(config.hiddenAttr) === "1") {
       return;
@@ -597,6 +1035,7 @@
 
     applyYouSectionDividerState();
     applyProfileReportHistoryMenuState();
+    applyWatchPageActionState();
   }
 
   function scheduleApply() {
@@ -642,8 +1081,7 @@
     const settings = await getSettings(DEFAULT_SETTINGS);
 
     for (const key of SETTING_KEYS) {
-      const value = settings[key];
-      currentSettings[key] = value === undefined ? Boolean(DEFAULT_SETTINGS[key]) : Boolean(value);
+      currentSettings[key] = normalizeSettingValue(key, settings[key]);
     }
 
     scheduleApply();
@@ -661,8 +1099,7 @@
           continue;
         }
 
-        const nextValue = changes[key].newValue;
-        currentSettings[key] = nextValue === undefined ? Boolean(DEFAULT_SETTINGS[key]) : Boolean(nextValue);
+        currentSettings[key] = normalizeSettingValue(key, changes[key].newValue);
         hasRelevantChange = true;
       }
 

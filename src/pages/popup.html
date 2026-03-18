@@ -15,6 +15,7 @@
 
     <div class="section-nav" role="tablist" aria-label="Settings sections">
       <button class="section-btn is-active" type="button" data-section="general">General</button>
+      <button class="section-btn" type="button" data-section="watch">Watch page</button>
       <button class="section-btn" type="button" data-section="sidebar">Sidebar</button>
       <button class="section-btn" type="button" data-section="subscriptions">Subscriptions page</button>
     </div>
@@ -38,9 +39,47 @@
         <div class="config-actions">
           <button id="openConfigTools" class="config-btn" type="button">Open Config Tools</button>
         </div>
-        <p class="config-help">Import and export toggles from the Config Tools page.</p>
+        <p class="config-help">Import and export settings from the Config Tools page.</p>
         <p id="configStatus" class="config-status" role="status" aria-live="polite"></p>
       </section>
+    </section>
+
+    <section class="section-panel" data-panel="watch">
+      <label class="setting-row" for="shareButtonMode">
+        <span>Share button</span>
+        <select id="shareButtonMode" class="setting-select">
+          <option value="default">YouTube default</option>
+          <option value="row">Always in row</option>
+          <option value="menu">Only in "..." menu</option>
+          <option value="hide">Hide</option>
+        </select>
+      </label>
+      <label class="setting-row" for="saveButtonMode">
+        <span>Save button</span>
+        <select id="saveButtonMode" class="setting-select">
+          <option value="default">YouTube default</option>
+          <option value="row">Always in row</option>
+          <option value="menu">Only in "..." menu</option>
+          <option value="hide">Hide</option>
+        </select>
+      </label>
+      <label class="setting-row" for="thanksButtonMode">
+        <span>Thanks button</span>
+        <select id="thanksButtonMode" class="setting-select">
+          <option value="default">YouTube default</option>
+          <option value="row">Always in row</option>
+          <option value="menu">Only in "..." menu</option>
+          <option value="hide">Hide</option>
+        </select>
+      </label>
+      <label class="toggle">
+        <input id="hideRemoveAdsButton" type="checkbox">
+        <span>Hide "Remove ads" in "..." menu</span>
+      </label>
+      <label class="toggle">
+        <input id="hideJoinButton" type="checkbox">
+        <span>Hide channel "Join" button</span>
+      </label>
     </section>
 
     <section class="section-panel" data-panel="sidebar">

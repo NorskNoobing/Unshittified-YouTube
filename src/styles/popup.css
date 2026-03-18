@@ -129,6 +129,42 @@ body {
   margin-top: 10px;
 }
 
+.setting-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 14px;
+  line-height: 1.3;
+}
+
+.setting-row span {
+  flex: 1;
+}
+
+.setting-row + .setting-row,
+.setting-row + .toggle,
+.toggle + .setting-row {
+  margin-top: 10px;
+}
+
+.setting-select {
+  min-width: 132px;
+  max-width: 132px;
+  border: 1px solid #5f616d;
+  background: #363341;
+  color: #f5f3f7;
+  border-radius: 8px;
+  padding: 6px 8px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.setting-select:focus-visible {
+  outline: 2px solid #fda4af;
+  outline-offset: 2px;
+}
+
 .config-tools {
   margin-top: 14px;
   padding-top: 12px;

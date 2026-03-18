@@ -73,6 +73,14 @@
     }
   }
 
+  function normalizeSettingValue(setting, value) {
+    if (setting.type === "select") {
+      return setting.options?.includes(value) ? value : setting.defaultValue;
+    }
+
+    return Boolean(value);
+  }
+
   async function setSetting(key, value) {
     try {
       await setInStorage({ [key]: value });
@@ -159,14 +167,21 @@
     const settings = await getSettings(DEFAULT_SETTINGS);
 
     for (const setting of SETTINGS) {
-      const checkbox = document.getElementById(setting.key);
-      if (!checkbox) {
+      const control = document.getElementById(setting.key);
+      if (!control) {
         continue;
       }
 
-      checkbox.checked = Boolean(settings[setting.key]);
-      checkbox.addEventListener("change", async () => {
-        await setSetting(setting.key, checkbox.checked);
+      const normalizedValue = normalizeSettingValue(setting, settings[setting.key]);
+      if (setting.type === "select") {
+        control.value = normalizedValue;
+      } else {
+        control.checked = normalizedValue;
+      }
+
+      control.addEventListener("change", async () => {
+        const nextValue = setting.type === "select" ? control.value : control.checked;
+        await setSetting(setting.key, normalizeSettingValue(setting, nextValue));
       });
     }
 
