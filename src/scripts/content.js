@@ -96,6 +96,9 @@
   const WATCH_ACTION_HIDDEN_ATTR = "data-ytx-watch-action-hidden";
   const WATCH_ACTION_PREV_DISPLAY_ATTR = "data-ytx-watch-action-prev-display";
   const WATCH_ACTION_MENU_ITEM_ATTR = "data-ytx-watch-action-menu-item";
+  const WATCH_ACTION_POPUP_STYLE_ATTR = "data-ytx-watch-action-popup-prev-style";
+  const WATCH_ACTION_POPUP_ITEM_HIDDEN_ATTR = "data-ytx-watch-action-popup-item-hidden";
+  const WATCH_ACTION_POPUP_ITEM_PREV_DISPLAY_ATTR = "data-ytx-watch-action-popup-item-prev-display";
   const REMOVE_ADS_HIDDEN_ATTR = "data-ytx-watch-remove-ads-hidden";
   const REMOVE_ADS_PREV_DISPLAY_ATTR = "data-ytx-watch-remove-ads-prev-display";
 
@@ -791,6 +794,7 @@
       placeholder.after(actionContainer);
     }
 
+    restoreWatchActionPopupStyles(actionContainer);
     actionContainer.removeAttribute(WATCH_ACTION_MENU_ITEM_ATTR);
   }
 
@@ -844,6 +848,54 @@
     window.dispatchEvent(new Event("resize"));
   }
 
+  function applyWatchActionPopupStyles(actionContainer) {
+    if (actionContainer.getAttribute(WATCH_ACTION_POPUP_STYLE_ATTR) === null) {
+      actionContainer.setAttribute(
+        WATCH_ACTION_POPUP_STYLE_ATTR,
+        actionContainer.getAttribute("style") || ""
+      );
+    }
+
+    actionContainer.style.setProperty("display", "block", "important");
+    actionContainer.style.setProperty("width", "max-content", "important");
+    actionContainer.style.setProperty("max-width", "100%", "important");
+    actionContainer.style.setProperty("padding", "4px 8px", "important");
+    actionContainer.style.setProperty("box-sizing", "border-box", "important");
+  }
+
+  function restoreWatchActionPopupStyles(actionContainer) {
+    if (!actionContainer || actionContainer.getAttribute(WATCH_ACTION_POPUP_STYLE_ATTR) === null) {
+      return;
+    }
+
+    const previousStyle = actionContainer.getAttribute(WATCH_ACTION_POPUP_STYLE_ATTR) || "";
+    if (previousStyle) {
+      actionContainer.setAttribute("style", previousStyle);
+    } else {
+      actionContainer.removeAttribute("style");
+    }
+
+    actionContainer.removeAttribute(WATCH_ACTION_POPUP_STYLE_ATTR);
+  }
+
+  function restoreHiddenWatchPopupActionItems() {
+    for (const item of document.querySelectorAll(`[${WATCH_ACTION_POPUP_ITEM_HIDDEN_ATTR}="1"]`)) {
+      const previousDisplay = item.getAttribute(WATCH_ACTION_POPUP_ITEM_PREV_DISPLAY_ATTR) || "";
+      item.style.display = previousDisplay;
+      item.removeAttribute(WATCH_ACTION_POPUP_ITEM_HIDDEN_ATTR);
+      item.removeAttribute(WATCH_ACTION_POPUP_ITEM_PREV_DISPLAY_ATTR);
+    }
+  }
+
+  function getNativeWatchPopupActionItems(popup, action) {
+    return [
+      ...popup.querySelectorAll("#items > *")
+    ].filter((item) =>
+      item.getAttribute(WATCH_ACTION_MENU_ITEM_ATTR) !== action.key
+      && getPopupItemText(item) === normalizeText(action.label)
+    );
+  }
+
   function ensureWatchActionMenuItem(popup, action, actionContainer) {
     const itemsRoot = popup.querySelector("#items");
     if (!itemsRoot) {
@@ -851,6 +903,7 @@
     }
 
     actionContainer.setAttribute(WATCH_ACTION_MENU_ITEM_ATTR, action.key);
+    applyWatchActionPopupStyles(actionContainer);
     if (actionContainer.parentElement !== itemsRoot) {
       itemsRoot.prepend(actionContainer);
     }
@@ -884,6 +937,11 @@
 
     let insertBeforeNode = itemsRoot.firstElementChild;
     for (const action of menuActions) {
+      if (getNativeWatchPopupActionItems(popup, action).length > 0) {
+        restoreWatchActionMenuItem(action.key);
+        continue;
+      }
+
       const injectedAction = ensureWatchActionMenuItem(popup, action, actionContainers[action.key]);
       if (!injectedAction) {
         continue;
@@ -894,6 +952,33 @@
       }
 
       insertBeforeNode = injectedAction.nextElementSibling;
+    }
+
+    requestWatchPopupRelayout(popup);
+  }
+
+  function applyNativeWatchPopupActionVisibility() {
+    const popups = getVisibleWatchActionPopups();
+    if (popups.length === 0) {
+      return;
+    }
+
+    const popup = popups[0];
+    for (const action of WATCH_ACTIONS) {
+      const mode = currentSettings[action.key];
+      if (mode !== "hide" && mode !== "row") {
+        continue;
+      }
+
+      for (const item of getNativeWatchPopupActionItems(popup, action)) {
+        if (item.getAttribute(WATCH_ACTION_POPUP_ITEM_HIDDEN_ATTR) === "1") {
+          continue;
+        }
+
+        item.setAttribute(WATCH_ACTION_POPUP_ITEM_HIDDEN_ATTR, "1");
+        item.setAttribute(WATCH_ACTION_POPUP_ITEM_PREV_DISPLAY_ATTR, item.style.display || "");
+        item.style.display = "none";
+      }
     }
 
     requestWatchPopupRelayout(popup);
@@ -926,6 +1011,7 @@
 
   function applyWatchPageActionState() {
     restoreRemoveAdsMenuItems();
+    restoreHiddenWatchPopupActionItems();
 
     if (!isWatchPage()) {
       for (const action of WATCH_ACTIONS) {
@@ -987,6 +1073,7 @@
       unhideWatchActionContainer(actionContainer);
     }
 
+    applyNativeWatchPopupActionVisibility();
     hideRemoveAdsMenuItems();
   }
 
