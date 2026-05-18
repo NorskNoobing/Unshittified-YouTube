@@ -1,85 +1,15 @@
 (function () {
   const SETTINGS = globalThis.YTX_SETTINGS;
   const DEFAULT_SETTINGS = globalThis.YTX_DEFAULT_SETTINGS;
+  const STORAGE = globalThis.YTX_STORAGE;
 
-  if (!Array.isArray(SETTINGS) || !DEFAULT_SETTINGS) {
-    console.warn("Unshittified YouTube: settings schema is missing in popup context.");
+  if (!Array.isArray(SETTINGS) || !DEFAULT_SETTINGS || !STORAGE) {
+    console.warn("Unshittified YouTube: required shared scripts are missing in popup context.");
     return;
   }
 
-  const api = globalThis.browser?.storage ? globalThis.browser : globalThis.chrome;
-  const storageArea = api?.storage?.local;
+  const { api, getSettings, setSetting } = STORAGE;
   let statusTimeout = null;
-
-  function getFromStorage(defaults) {
-    if (!storageArea) {
-      return Promise.resolve({ ...defaults });
-    }
-
-    try {
-      const result = storageArea.get(defaults);
-      if (result && typeof result.then === "function") {
-        return result;
-      }
-    } catch (error) {
-      // Fall back to callback-style API.
-    }
-
-    return new Promise((resolve, reject) => {
-      storageArea.get(defaults, (items) => {
-        const lastError = api?.runtime?.lastError;
-        if (lastError) {
-          reject(new Error(lastError.message));
-          return;
-        }
-
-        resolve(items);
-      });
-    });
-  }
-
-  function setInStorage(values) {
-    if (!storageArea) {
-      return Promise.resolve();
-    }
-
-    try {
-      const result = storageArea.set(values);
-      if (result && typeof result.then === "function") {
-        return result;
-      }
-    } catch (error) {
-      // Fall back to callback-style API.
-    }
-
-    return new Promise((resolve, reject) => {
-      storageArea.set(values, () => {
-        const lastError = api?.runtime?.lastError;
-        if (lastError) {
-          reject(new Error(lastError.message));
-          return;
-        }
-
-        resolve();
-      });
-    });
-  }
-
-  async function getSettings(defaults) {
-    try {
-      return await getFromStorage(defaults);
-    } catch (error) {
-      return { ...defaults };
-    }
-  }
-
-  async function setSetting(key, value) {
-    try {
-      await setInStorage({ [key]: value });
-    } catch (error) {
-      // Ignore storage write failures.
-    }
-  }
 
   function showStatus(message, tone) {
     const status = document.getElementById("configStatus");
