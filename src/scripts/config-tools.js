@@ -1,14 +1,14 @@
 (function () {
   const SETTINGS = globalThis.YTX_SETTINGS;
   const DEFAULT_SETTINGS = globalThis.YTX_DEFAULT_SETTINGS;
+  const STORAGE = globalThis.YTX_STORAGE;
 
-  if (!Array.isArray(SETTINGS) || !DEFAULT_SETTINGS) {
-    console.warn("Unshittified YouTube: settings schema is missing in config tools context.");
+  if (!Array.isArray(SETTINGS) || !DEFAULT_SETTINGS || !STORAGE) {
+    console.warn("Unshittified YouTube: required shared scripts are missing in config tools context.");
     return;
   }
 
-  const api = globalThis.browser?.storage ? globalThis.browser : globalThis.chrome;
-  const storageArea = api?.storage?.local;
+  const { getFromStorage, setInStorage } = STORAGE;
   const CONFIG_SCHEMA = "unshittified-youtube-toggle-config";
   const CONFIG_VERSION = 1;
   const SETTING_KEYS = SETTINGS.map((setting) => setting.key);
@@ -37,60 +37,6 @@
       status.textContent = "";
       status.classList.remove("is-success", "is-error");
     }, 3500);
-  }
-
-  function getFromStorage(defaults) {
-    if (!storageArea) {
-      return Promise.resolve({ ...defaults });
-    }
-
-    try {
-      const result = storageArea.get(defaults);
-      if (result && typeof result.then === "function") {
-        return result;
-      }
-    } catch (error) {
-      // Fall back to callback API.
-    }
-
-    return new Promise((resolve, reject) => {
-      storageArea.get(defaults, (items) => {
-        const lastError = api?.runtime?.lastError;
-        if (lastError) {
-          reject(new Error(lastError.message));
-          return;
-        }
-
-        resolve(items);
-      });
-    });
-  }
-
-  function setInStorage(values) {
-    if (!storageArea) {
-      return Promise.resolve();
-    }
-
-    try {
-      const result = storageArea.set(values);
-      if (result && typeof result.then === "function") {
-        return result;
-      }
-    } catch (error) {
-      // Fall back to callback API.
-    }
-
-    return new Promise((resolve, reject) => {
-      storageArea.set(values, () => {
-        const lastError = api?.runtime?.lastError;
-        if (lastError) {
-          reject(new Error(lastError.message));
-          return;
-        }
-
-        resolve();
-      });
-    });
   }
 
   function isPlainObject(value) {
