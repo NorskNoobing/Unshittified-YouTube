@@ -40,7 +40,7 @@ Planned for browser store distribution (if I get to that point).
 Until then, use the development loading steps below.
 
 ## Development
-No build step is required.
+No build step is required for local development.
 
 ### Load in Chrome / Chromium
 1. Open `chrome://extensions`.

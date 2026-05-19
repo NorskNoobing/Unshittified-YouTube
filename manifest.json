@@ -3,6 +3,7 @@
   "name": "Unshittified YouTube",
   "description": "Toggleable YouTube UI tweaks for Chrome and Firefox.",
   "version": "0.1.0",
+  "author": "NorskNoobing",
   "icons": {
     "16": "assets/icons/icon-16.png",
     "32": "assets/icons/icon-32.png",
@@ -12,6 +13,16 @@
   "permissions": [
     "storage"
   ],
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "@unshittified-youtube.norsknoobing",
+      "data_collection_permissions": {
+        "required": [
+          "none"
+        ]
+      }
+    }
+  },
   "host_permissions": [
     "https://www.youtube.com/*"
   ],

@@ -1,0 +1,5 @@
+dist/
+web-ext-artifacts/
+
+.DS_Store
+Thumbs.db

@@ -39,15 +39,35 @@
     }
 
     iconHost.removeAttribute("hidden");
-    iconHost.innerHTML = `
-      <span class="yt-icon-shape style-scope yt-icon ytSpecIconShapeHost">
-        <div style="width: 100%; height: 100%; display: block; fill: currentcolor;">
-          <svg xmlns="http://www.w3.org/2000/svg" height="24" viewBox="0 0 24 24" width="24" focusable="false" aria-hidden="true" style="pointer-events: none; display: inherit; width: 100%; height: 100%;">
-            <path d="${iconPath}"></path>
-          </svg>
-        </div>
-      </span>
-    `;
+    iconHost.textContent = "";
+
+    const shape = document.createElement("span");
+    shape.className = "yt-icon-shape style-scope yt-icon ytSpecIconShapeHost";
+
+    const wrapper = document.createElement("div");
+    wrapper.style.width = "100%";
+    wrapper.style.height = "100%";
+    wrapper.style.display = "block";
+    wrapper.style.fill = "currentcolor";
+
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svg.setAttribute("height", "24");
+    svg.setAttribute("viewBox", "0 0 24 24");
+    svg.setAttribute("width", "24");
+    svg.setAttribute("focusable", "false");
+    svg.setAttribute("aria-hidden", "true");
+    svg.style.pointerEvents = "none";
+    svg.style.display = "inherit";
+    svg.style.width = "100%";
+    svg.style.height = "100%";
+
+    const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    path.setAttribute("d", iconPath);
+
+    svg.append(path);
+    wrapper.append(svg);
+    shape.append(wrapper);
+    iconHost.append(shape);
   }
 
   function renderProfileReportHistoryItem(compactLinkRenderer, iconPath) {
