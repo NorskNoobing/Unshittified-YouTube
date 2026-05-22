@@ -7,6 +7,10 @@
 <p align="center"><strong>Toggleable YouTube UI cleanup for Chrome and Firefox.</strong></p>
 
 <p align="center">
+  <a href="https://addons.mozilla.org/addon/unshittified-youtube/"><img src="assets/badges/firefox-get-the-addon.png" width="172" height="60" alt="Get the add-on for Firefox" /></a>
+</p>
+
+<p align="center">
   <a href="https://github.com/NorskNoobing/Unshittified-YouTube/issues"><img src="https://img.shields.io/github/issues/NorskNoobing/Unshittified-YouTube" alt="Open issues" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache%202.0-blue" alt="License: Apache 2.0" /></a>
 </p>
@@ -35,9 +39,9 @@ All features are toggleable.
 - Strict validation on import (schema/version, exact keys, boolean values).
 
 ## Distribution
-Planned for browser store distribution (if I get to that point).
+Available on [Firefox Add-ons](https://addons.mozilla.org/addon/unshittified-youtube/).
 
-Until then, use the development loading steps below.
+For local development, use the development loading steps below.
 
 ## Development
 No build step is required for local development.
